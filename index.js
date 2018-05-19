@@ -14,6 +14,8 @@ const bot = new Discord.Client({
 	disableEveryone: true
 });
 
+let commandsList = fs.readFileSync('commands.md', 'utf8');
+
 /* MUSIC VARIABLES */
 let queue = []; // Songs queue
 let songsQueue = []; // Song names stored for queue command
@@ -26,18 +28,19 @@ let ytResultList = []; // Video names results from yt command
 let ytResultAdd = []; // For storing !add command choice
 /* MUSIC VARIABLES END */
 let re = /^(?:[1-5]|0[1-5]|10)$/; // RegEx for allowing only 1-5 while selecting song from yt results
+let regVol = /^(?:([1][0-9][0-9])|200|([1-9][0-9])|([0-9]))$/; // RegEx for volume control
 let youtubeSearched = false; // If youtube has been searched (for !add command)
 let selectUser; // Selecting user from guild
 
 bot.on("ready", async () => {
 	console.log(`Bot is ready! ${bot.user.username}`);
 
-	try {
+	/*try {
 		let link = await bot.generateInvite(["ADMINISTRATOR"]);
 		console.log(link);
 	} catch (e) {
 		console.log(e.stack);
-	}
+	}*/
 
 });
 
@@ -90,8 +93,16 @@ bot.on("message", async message => {
 			break;
 
 		case "play":
-			if (args.length == 0) {
-				// TODO: If music isn't playing but there's songs in queue from youtube search, play that
+			if (args.length == 0 && queue.length > 0) {
+				if (!message.member.voiceChannel) {
+					message.reply("you need to be in a voice channel to play music. Please, join one and try again.");
+				} else {
+					isPlaying = true;
+					playMusic(queue[0], message);
+					message.reply(`now playing **${songsQueue[0]}**`);
+				}
+			} else if (args.length == 0 && queue.length == 0) {
+				message.reply("queue is empty now, type !play [song name] or !yt [song name] to play/search new songs!");
 			} else if (queue.length > 0 || isPlaying) {
 				getID(args).then(id => {
 					if (id) {
@@ -124,7 +135,7 @@ bot.on("message", async message => {
 		case "skip":
 			console.log(queue);
 			if (queue.length === 1) {
-				message.reply("queue is empty now, type !play or !yt to play/search new songs!");
+				message.reply("queue is empty now, type !play [song name] or !yt [song name] to play/search new songs!");
 				dispatcher.end();
 				setTimeout(() => voiceChannel.leave(), 1000);
 			} else {
@@ -172,22 +183,26 @@ bot.on("message", async message => {
 			break;
 
 		case "yt":
-			message.channel.send("```Searching youtube...```");
-			getYouTubeResultsId(args, 5).then(ytResults => {
-				ytResultAdd = ytResults;
-				let ytEmbed = new Discord.RichEmbed()
-					.setColor("#FF0000")
-					.setAuthor("Youtube search results: ", icon_url = "https://cdn1.iconfinder.com/data/icons/logotypes/32/youtube-512.png")
-					.addField("1:", "```" + ytResults[0] + "```")
-					.addField("2:", "```" + ytResults[1] + "```")
-					.addField("3:", "```" + ytResults[2] + "```")
-					.addField("4:", "```" + ytResults[3] + "```")
-					.addField("5:", "```" + ytResults[4] + "```")
-					.addBlankField()
-					.setFooter("Send !add [result number] to queue the song.");
-				message.channel.send(ytEmbed);
-				youtubeSearched = true;
-			}).catch(err => console.log(err));
+			if (args.length == 0) {
+				message.reply("you need to enter search term (!yt [search term]).");
+			} else {
+				message.channel.send("```Searching youtube...```");
+				getYouTubeResultsId(args, 5).then(ytResults => {
+					ytResultAdd = ytResults;
+					let ytEmbed = new Discord.RichEmbed()
+						.setColor("#FF0000")
+						.setAuthor("Youtube search results: ", icon_url = "https://cdn1.iconfinder.com/data/icons/logotypes/32/youtube-512.png")
+						.addField("1:", "```" + ytResults[0] + "```")
+						.addField("2:", "```" + ytResults[1] + "```")
+						.addField("3:", "```" + ytResults[2] + "```")
+						.addField("4:", "```" + ytResults[3] + "```")
+						.addField("5:", "```" + ytResults[4] + "```")
+						.addBlankField()
+						.setFooter("Send !add [result number] to queue the song.");
+					message.channel.send(ytEmbed);
+					youtubeSearched = true;
+				}).catch(err => console.log(err));
+			}
 			break;
 
 		case "add":
@@ -206,11 +221,35 @@ bot.on("message", async message => {
 						}
 					}).catch(error => console.log(error));
 					youtubeSearched = false;
-					message.reply(`youTube result ${args} was added to the queue!`);
 				}
 			} else {
 				message.reply("you need to use !yt [search term] command first to add song from the list to the queue.");
 			}
+			break;
+
+		case "vol":
+			if (args.length == 0) {
+				message.reply("you need to add a value for volume to be set in % (0 - 100).");
+			} else if (args.length > 0 && regVol.test(args) == true && dispatcher) {
+				dispatcher.setVolume(args * 0.01);
+				message.reply(`music volume has been set to ${args}%.`);
+				console.log(dispatcher.volume);
+			} else if (!regVol.test(args)) {
+				message.reply("you need to enter a number in 0-200 range.");
+			} else {
+				message.reply("you can only set music volume if it is playing.");
+			}
+			break;
+
+		case "help":
+		message.channel.send("```cs\n" + commandsList + "\n```");
+			break;
+
+		case "commands":
+			message.channel.send("```cs\n" + commandsList + "\n```");
+			break;
+
+
 	}
 });
 
@@ -237,6 +276,7 @@ function playMusic(id, message) {
 				queue.shift();
 				songsQueue.shift();
 				if (queue.length === 0) {
+					console.log("Disconnected...");
 					queue = [];
 					songsQueue = [];
 					isPlaying = false;
