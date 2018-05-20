@@ -156,9 +156,27 @@ bot.on("message", async message => {
 			break;
 
 		case "queue":
-			if (queue.length === 0) {
-				message.reply("queue is empty now, type !play or !yt to play/search new songs!");
-			} else {
+			if (queue.length === 0) { // if there are no songs in the queue, send message that queue is empty
+				message.reply("queue is empty, type !play or !yt to play/search new songs!");
+			} else if (args.length > 0 && args[0] == 'remove') { // if arguments are provided and first one is remove
+				if (args.length == 2 && args[1] <= queue.length) { // check if there are no more than 2 arguments and that second one is in range of songs number in queue
+					// then remove selected song from the queue
+					message.reply(`**${songsQueue[args[1] - 1]}** has been removed from the queue. Type !queue to see the current queue.`);
+					queue.splice(args[1] - 1, 1);
+					songsQueue.splice(args[1] - 1, 1);
+				} else { // if there are more than 2 arguments and the second one is not in the range of songs number in queue, send message
+					message.reply(`you need to enter valid queued song number (1-${queue.length}).`);
+				}
+			} else if (args.length > 0 && args[0] == 'clear') { // same as remove, only clears queue if clear is first argument
+				if (args.length == 1) {
+					// reseting queue and songsQueue, but leaving current song
+					message.reply("all upcoming songs have been removed from the queue. type !play or !yt to play/search new songs!");
+					queue.splice(1);
+					songsQueue.splice(1);
+				} else {
+					message.reply("you need to type !queue clear without following arguments.");
+				}
+			}	else { // if there are songs in the queue and queue commands is without arguments display current queue
 				let format = "```"
 				for (const songName in songsQueue) {
 					if (songsQueue.hasOwnProperty(songName)) {
@@ -176,6 +194,14 @@ bot.on("message", async message => {
 				message.channel.send(format);
 			}
 			break;
+
+		case "repeat":
+			if(isPlaying) {
+				queue.splice(1, 0, queue[0]);
+				songsQueue.splice(1, 0, songsQueue[0]);
+				message.reply(`**${songsQueue[0]}** will be played again.`);
+			}
+		break;
 
 		case "stop":
 			dispatcher.end();
@@ -228,21 +254,21 @@ bot.on("message", async message => {
 			break;
 
 		case "vol":
-			if (args.length == 0) {
-				message.reply("you need to add a value for volume to be set in % (0 - 100).");
+			if (args.length == 0 && dispatcher) {
+				message.reply(`current volume is ${dispatcher.volume}. Type !vol [percentage - 0 to 200] to set music volume.`);
 			} else if (args.length > 0 && regVol.test(args) == true && dispatcher) {
 				dispatcher.setVolume(args * 0.01);
 				message.reply(`music volume has been set to ${args}%.`);
 				console.log(dispatcher.volume);
-			} else if (!regVol.test(args)) {
+			} else if (!regVol.test(args) && dispatcher) {
 				message.reply("you need to enter a number in 0-200 range.");
 			} else {
-				message.reply("you can only set music volume if it is playing.");
+				message.reply("you can only set music volume if music is playing.");
 			}
 			break;
 
 		case "help":
-		message.channel.send("```cs\n" + commandsList + "\n```");
+			message.channel.send("```cs\n" + commandsList + "\n```");
 			break;
 
 		case "commands":
@@ -268,8 +294,9 @@ function playMusic(id, message) {
 
 			skipRequest = 0;
 			skippers = [];
-
+			
 			dispatcher = connection.playStream(stream);
+			dispatcher.setVolume(0.25);
 			dispatcher.on('end', () => {
 				skipRequest = 0;
 				skippers = [];

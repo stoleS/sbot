@@ -8,6 +8,12 @@
 
 "!queue": displays current queue
 
+"!queue remove [song number]": removes chosen song from the queue
+
+"!queue clear": removes all songs from the queue
+
+"!repeat": plays current song again
+
 "!stop": stops playing music and deletes all songs in the queue
 
 "!yt [search term]": searches the YouTube and returns first 5 results
