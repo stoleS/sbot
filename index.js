@@ -176,7 +176,12 @@ bot.on("message", async message => {
 				} else {
 					message.reply("you need to type !queue clear without following arguments.");
 				}
-			}	else { // if there are songs in the queue and queue commands is without arguments display current queue
+			} else if (args.length > 0 && args[0] == 'shuffle') {
+				let tempA = [songsQueue[0]];
+				let tempB = songsQueue.slice(1);
+				songsQueue = tempA.concat(shuffle(tempB));
+				message.channel.send("Queue has been shuffled. Type !queue to see the new queue!");
+			} else { // if there are songs in the queue and queue commands is without arguments display current queue
 				let format = "```"
 				for (const songName in songsQueue) {
 					if (songsQueue.hasOwnProperty(songName)) {
@@ -196,12 +201,12 @@ bot.on("message", async message => {
 			break;
 
 		case "repeat":
-			if(isPlaying) {
+			if (isPlaying) {
 				queue.splice(1, 0, queue[0]);
 				songsQueue.splice(1, 0, songsQueue[0]);
 				message.reply(`**${songsQueue[0]}** will be played again.`);
 			}
-		break;
+			break;
 
 		case "stop":
 			dispatcher.end();
@@ -294,7 +299,7 @@ function playMusic(id, message) {
 
 			skipRequest = 0;
 			skippers = [];
-			
+
 			dispatcher = connection.playStream(stream);
 			dispatcher.setVolume(0.25);
 			dispatcher.on('end', () => {
@@ -370,5 +375,19 @@ async function getYouTubeResultsId(ytResult, numOfResults) {
 /*--------------------------------*/
 /* YOUTUBE CONTROL FUNCTIONS END */
 /*------------------------------*/
+
+/*-----------------------*/
+/* MISC FUNCTIONS START */
+/*---------------------*/
+function shuffle(queue) {
+	for (let i = queue.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[queue[i], queue[j]] = [queue[j], queue[i]];
+	}
+	return queue;
+}
+/*---------------------*/
+/* MISC FUNCTIONS END */
+/*-------------------*/
 
 bot.login(botSettings.token);
