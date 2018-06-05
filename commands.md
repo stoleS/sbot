@@ -12,6 +12,8 @@
 
 "!queue clear": removes all songs from the queue
 
+"!queue shuffle": shuffles the current queue
+
 "!repeat": plays current song again
 
 "!stop": stops playing music and deletes all songs in the queue
